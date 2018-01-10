@@ -1,0 +1,24 @@
+{
+    "name": "lomaster/tiny-restful",
+    "description": "Tiny RESTful router",
+    "type": "library",
+    "require": {
+        "riimu/kit-urlparser": "^2.1"
+    },
+    "license": "The MIT License (MIT)",
+    "authors": [
+        {
+            "name": "Valrii",
+            "email": "valery.tsarov@gmail.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {
+        "php": ">=5.4.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "TinyRest\\": "src/"
+        }
+    }
+}

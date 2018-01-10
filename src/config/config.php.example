@@ -1,0 +1,13 @@
+<?php
+$config = [
+  'db' => [
+    'master' => [
+      'hostName' => "",
+      'dataBase' => "",
+      'userName' => "",
+      'password' => "",
+    ],
+  ]
+];
+
+return $config;
