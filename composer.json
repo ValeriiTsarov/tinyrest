@@ -2,9 +2,6 @@
     "name": "lomaster/tiny-restful",
     "description": "Tiny RESTful router",
     "type": "library",
-    "require": {
-        "riimu/kit-urlparser": "^2.1"
-    },
     "license": "The MIT License (MIT)",
     "authors": [
         {

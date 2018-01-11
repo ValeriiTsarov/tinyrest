@@ -10,11 +10,12 @@ use TinyRest\helpers\Files;
  * Class ResourceBase
  * @package TinyRest\rest\v1
  */
-class ResourceBase
+abstract class ResourceBase
 {
   private $oDB;
 
-  protected $availableMethods = [];
+  protected $availableMethods = []; //It will be filled with child resource public methods
+  protected $unavailableMethods = []; //Method's black list. Attention: This array is case sensitive
   protected $oApi;
   protected $params = [];
   /* Params example
@@ -23,10 +24,10 @@ class ResourceBase
           'type' => Api::PARAM_TYPE_INT,
           'require' => 1,
         ]
-        'accessLevels' => [ //Get data from $_SESSION
+        'accessLevels' => [ //Get data from $_SESSION['AccessLevels']
           'type' => Api::PARAM_TYPE_ARRAY,
           'require' => 1,
-          'session' => 'accessible_levels',
+          'session' => 'AccessLevels',
         ],
       ],
   */
@@ -52,9 +53,22 @@ class ResourceBase
   }
 
   /**
+   * Fill $this->availableMethods with child resource public methods
+   *
    * @return array
    */
   public function getAvailableMethods() {
+    if (empty($this->availableMethods)) {
+      $childRc = new \ReflectionClass($this);
+      $childMethods = $childRc->getMethods(\ReflectionMethod::IS_PUBLIC);
+      $thisName = get_class($this);
+
+      foreach ($childMethods as $f) {
+        if ($f->class === $thisName && !in_array($f->name, $this->unavailableMethods)) {
+          $this->availableMethods[] = strtolower($f->name);
+        };
+      }
+    }
 
     return $this->availableMethods;
   }
@@ -88,7 +102,7 @@ class ResourceBase
     return call_user_func([$this, $method]);
   }
 
-  public function fillRequiredParams()
+  protected function fillRequiredParams()
   {
     $fail = false;
     $failText = "Undefined or empty parameter. Required params: ";
@@ -99,7 +113,7 @@ class ResourceBase
           $this->paramValues[$param] = $_SESSION[$value['session']];
         }
       } else {
-        $this->paramValues[$param] = $this->oApi->getUriParam($param, $value['type']);
+        $this->paramValues[$param] = $this->oApi->getParam($param, $value['type']);
       }
       if (
         is_null($this->paramValues[$param])

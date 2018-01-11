@@ -3,6 +3,7 @@
 namespace TinyRest\rest;
 
 use TinyRest\helpers\Files;
+use TinyRest\helpers\Errors;
 use TinyRest\rest\ApiException;
 
 /**
@@ -11,7 +12,7 @@ use TinyRest\rest\ApiException;
  */
 class Api {
 
-  //Set array position in $this->pathSegments. Example: /rest/v1/driver/journeys/single?driverId=129
+  //Set array position in $this->pathSegments. Example: http://localhost/rest/v1/testgroup/testresource/testmethodinside
   const
       TRACKING_API_NAME_SEGMENT = 0 //rest
     , TRACKING_API_VERSION_SEGMENT = 1 //v1
@@ -19,14 +20,11 @@ class Api {
     , TRACKING_API_RESOURCE_SEGMENT = 3 //journeys
     , TRACKING_API_METHOD_SEGMENT = 4 //single
 
-    , PARAM_TYPE_INT = 'int'
-    , PARAM_TYPE_STRING = 'string'
-    , PARAM_TYPE_ARRAY = 'array' //1, 2, 3
-    , PARAM_ARRAY_SEPARATOR = ',' //1, 2, 3
   ;
 
   protected $oErrors;
   protected $oUri;
+  protected $oValidator;
   protected $oResource;
   protected $oConfig;
 
@@ -37,16 +35,80 @@ class Api {
   protected $classGroup;
   protected $resource;
   protected $method;
+  protected $requestMethod;
 
   public function __construct($requestUri)
   {
-    $this->oErrors = new \TinyRest\helpers\Errors();
-    $parser = new \Riimu\Kit\UrlParser\UriParser();
-    $this->oUri = $parser->parse($requestUri);
-    $this->pathSegments = $this->oUri->getPathSegments();
-    $this->queryParams = $this->oUri->getQueryParameters();
+    $this->requestMethod = $_SERVER['REQUEST_METHOD'];
+    $this->oErrors = new Errors();
+    $pathArr = explode('?', $requestUri);
+    $this->pathSegments = $this->getPathSegments($pathArr[0]);
+    if (empty($pathArr[1])) {
+      $pathArr[1] = '';
+    }
+    $this->queryParams = array_merge(
+      $this->getQueryParams($pathArr[1])
+      , $this->parseRawHttpRequest(@file_get_contents("php://input"))
+    );
     $this->apiRoot = dir(__DIR__)->path;
     $this->oConfig = new ApiConfig($this->apiRoot);
+    $this->oValidator = new ApiValidator();
+  }
+
+  protected function getQueryParams($input)
+  {
+    $data = [];
+    if ($input && ($tmpArr = explode("&", $input))) {
+      foreach ($tmpArr as $pair) {
+        $tmp = explode("=", $pair);
+        $data[urldecode($tmp[0])] = urldecode($tmp[1]);
+      }
+    }
+
+    return $data;
+  }
+
+  protected function getPathSegments($input)
+  {
+    $data = array_values(array_map(
+      'rawurldecode',
+      array_filter(explode('/', $input), 'strlen')
+    ));
+
+    return $data;
+  }
+
+  protected function parseRawHttpRequest($input)
+  {
+    $data = [];
+    if (!$input) {
+      return $data;
+    }
+
+    //form-data
+    if (strpos($input, 'Content-Disposition: form-data')) {
+      $arr = explode('----', $input);
+      foreach ($arr as $row) {
+        if (!strpos($row, 'name=')) {
+          continue;
+        }
+        $row = str_replace(["\r", "\""], ["\n", ""], $row);
+        $tmpArr = array_values(array_filter(explode("\n", explode('name=', $row)[1])));
+        $data[$tmpArr[0]] = $tmpArr[1];
+      }
+      //x-www-form-urlencoded
+    } else {
+      parse_str($input, $data);
+    }
+    //DELETE method
+    if (empty($data) && ($tmpArr = $this->getQueryParams($input))) {
+      foreach ($tmpArr as $pair) {
+        $tmp = explode("=", $pair);
+        $data[urldecode($tmp[0])] = urldecode($tmp[1]);
+      }
+    }
+
+    return $data;
   }
 
   protected function isDebugMode()
@@ -226,24 +288,8 @@ class Api {
     return $this->oResource;
   }
 
-  protected function uriParam($name, $isSet, $notEmpty)
-  {
-    if (
-    (($notEmpty && empty($this->queryParams[$name]))
-      || ($isSet && !isset($this->queryParams[$name])))
-    ) {
-      throw new ApiException("Undefined or empty param [{$name}]", 400);
-    }
-    $result = null;
-    if ( isset( $this->queryParams[$name] ) ) {
-      $result = $this->queryParams[$name];
-    }
-
-    return $result;
-  }
-
   /**
-   * Get required uri param
+   * Get param
    *
    * @param $name
    * @param string $type
@@ -252,57 +298,54 @@ class Api {
    * @return mixed
    * @throws \TinyRest\rest\ApiException
    */
-  public function getUriParam($name, $type = '', $isSet = 0, $notEmpty = 0)
+  public function getParam($name, $type = '', $isSet = 0, $notEmpty = 0)
   {
-    $result = $this->uriParam($name, $isSet, $notEmpty);
+    $error = false;
+    $result = null;
 
-    if (!is_null($result) && $type) {
-      switch ($type) {
-        case self::PARAM_TYPE_INT:
-          $result = (int)$result;
-          break;
-        case self::PARAM_TYPE_STRING:
-          if (!is_string($result)) {
-            $result = 0;
-          }
-          break;
-        case self::PARAM_TYPE_ARRAY:
-          if (($result = explode(self::PARAM_ARRAY_SEPARATOR, $result))) {
-            foreach ($result as &$row) {
-              $row = trim($row);
-            }
-          }
-          break;
+    if (isset($this->queryParams[$name])) {
+      if (empty($this->queryParams[$name])) {
+        if ($notEmpty) {
+          $error = true;
+        }
+      } else {
+        $result = $this->oValidator->check($this->queryParams[$name], $type);
       }
-      if (empty($result)) {
-        $result = null;
-      }
+    } else if ($isSet) {
+      $error = true;
+    }
+    if ($error) {
+      throw new ApiException("Undefined or empty param [{$name}]", 400);
     }
 
     return $result;
   }
 
   /**
-   * Get uri param. No error will be if it's undefined or empty
-   *
-   * @param $name
-   * @return mixed
-   * @throws \TinyRest\rest\ApiException
-   */
-  public function getUriParamZero($name)
-  {
-    $result = $this->uriParam($name, false, false);
-
-    return $result;
-  }
-
-  /**
-   * Getter for an object of ApiConfig
+   * Getter for an object of config
    * @return ApiConfig
    */
   public function getConfig()
   {
     return $this->oConfig;
+  }
+
+  /**
+   * Getter for an object of validator
+   * @return ApiValidator
+   */
+  public function getValidator()
+  {
+    return $this->oValidator;
+  }
+
+  /**
+   * Return a type of the request method: GET|POST|PUT etc.
+   * @return string
+   */
+  public function getRequestMethod()
+  {
+    return $this->requestMethod;
   }
 
 }

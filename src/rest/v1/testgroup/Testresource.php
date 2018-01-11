@@ -4,13 +4,14 @@
 namespace TinyRest\rest\v1\testgroup;
 
 use TinyRest\rest\v1\ResourceBase;
+use TinyRest\rest\Api;
 
 class Testresource extends ResourceBase
 {
 
-  protected $availableMethods = ['testmethod', 'testmethodinside'];
+  protected $unavailableMethods = ['testMethodUnsupported'];
 
-  public function TestMethod()
+  public function testMethod()
   {
 
     $oClass = $this->getSubClassFromMethod(__METHOD__);
@@ -18,16 +19,34 @@ class Testresource extends ResourceBase
     return ['resourceResult' => $oClass->get()];
   }
 
-  public function TestMethodInside()
+  public function testMethodInside()
   {
 
     return ['resourceResult' => 'TestMethodInside'];
   }
 
-  public function TestMethodUnsupported()
+  public function testMethodUnsupported()
   {
 
     return ['resourceResult' => 'TestMethodInside'];
   }
 
+  public function testSubClass()
+  {
+
+    $subClass = $this->oApi->getParam(
+      'subClass'
+      , $this->oApi->getValidator()->getTypeString()
+      , 1
+      , 1
+    );
+    $oClass = $this->getSubClass($subClass);
+
+    return ['resourceResult' => $oClass->get()];
+  }
+
+  protected function onlyPublicSupport()
+  {
+    //User can't get access to protected method
+  }
 }

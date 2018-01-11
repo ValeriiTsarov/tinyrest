@@ -7,7 +7,7 @@ class Testmethod
 
   public function get()
   {
-    $arr = ['methodResourceResult' => 'Test OK!'];
+    $arr = ['methodSubClass' => 'OK'];
 
     return $arr;
   }
