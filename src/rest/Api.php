@@ -278,6 +278,12 @@ class Api {
     return $this->method;
   }
 
+  /**
+   * Get resource object if it's possible
+   *
+   * @return mixed
+   * @throws \TinyRest\rest\ApiException
+   */
   public function getResourceObject()
   {
     $this->setVersion();
