@@ -3,6 +3,8 @@ use TinyRest\request\HttpException;
 use TinyRest\rest\ApiException;
 
 $loader = require __DIR__ . '/../../vendor/autoload.php';
+$resourceRoot = __DIR__ . '/../resources';
+$loader->addPsr4('App\\resources\\', $resourceRoot);
 
 $resultArray = [];
 $oResponse = new TinyRest\request\Response();
@@ -16,8 +18,10 @@ try {
 
   //Check auth
 
+  $oConfig = new \TinyRest\rest\ApiConfig('App\\resources\\', $resourceRoot);
+
   //Get resource by URI. Api will check version/classGroup/resource/method
-  $oApi = new \TinyRest\rest\Api($requestUri);
+  $oApi = new \TinyRest\rest\Api($oConfig);
   $oResource = $oApi->getResourceObject();
 
 

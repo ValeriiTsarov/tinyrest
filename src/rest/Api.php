@@ -37,11 +37,11 @@ class Api {
   protected $method;
   protected $requestMethod;
 
-  public function __construct($requestUri)
+  public function __construct(ApiConfig $oConfig)
   {
     $this->requestMethod = $_SERVER['REQUEST_METHOD'];
     $this->oErrors = new Errors();
-    $pathArr = explode('?', $requestUri);
+    $pathArr = explode('?', $_SERVER['REQUEST_URI']);
     $this->pathSegments = $this->getPathSegments($pathArr[0]);
     if (empty($pathArr[1])) {
       $pathArr[1] = '';
@@ -50,8 +50,8 @@ class Api {
       $this->getQueryParams($pathArr[1])
       , $this->parseRawHttpRequest(@file_get_contents("php://input"))
     );
-    $this->apiRoot = dir(__DIR__)->path;
-    $this->oConfig = new ApiConfig($this->apiRoot);
+    $this->oConfig = $oConfig;
+    $this->apiRoot = $this->oConfig->getRootPath();
     $this->oValidator = new ApiValidator();
   }
 

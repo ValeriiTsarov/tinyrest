@@ -1,6 +1,6 @@
 <?php
 
-namespace TinyRest\rest\v1;
+namespace TinyRest\rest;
 
 use TinyRest\rest\Api;
 use TinyRest\rest\ApiException;
@@ -10,9 +10,8 @@ use TinyRest\helpers\Files;
  * Class ResourceBase
  * @package TinyRest\rest\v1
  */
-abstract class ResourceBase
+abstract class ApiResourceBase
 {
-  private $oDB;
 
   protected $availableMethods = []; //It will be filled with child resource public methods
   protected $unavailableMethods = []; //Method's black list. Attention: This array is case sensitive
@@ -32,20 +31,6 @@ abstract class ResourceBase
       ],
   */
   protected $paramValues = []; //Array for values of params
-
-  /**
-   * Connector to DB
-   *
-   * @return \PDO
-   */
-  protected function getDB()
-  {
-    if (is_null($this->oDB)) {
-      $this->oDB = $this->oApi->getConfig()->getMasterDB();
-    }
-
-    return $this->oDB;
-  }
 
   public function __construct(Api $oApi)
   {

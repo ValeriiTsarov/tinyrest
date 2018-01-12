@@ -1,12 +1,11 @@
 <?php
 
+namespace App\resources\v1\testgroup;
 
-namespace TinyRest\rest\v1\testgroup;
 
-use TinyRest\rest\v1\ResourceBase;
-use TinyRest\rest\Api;
+use TinyRest\rest\ApiResourceBase;
 
-class Testresource extends ResourceBase
+class Testresource extends ApiResourceBase
 {
 
   protected $unavailableMethods = ['testMethodUnsupported'];

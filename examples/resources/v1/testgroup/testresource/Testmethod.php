@@ -1,6 +1,6 @@
 <?php
 
-namespace TinyRest\rest\v1\testgroup\testresource;
+namespace App\resources\v1\testgroup\testresource;
 
 class Testmethod
 {
