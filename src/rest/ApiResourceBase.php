@@ -119,21 +119,21 @@ abstract class ApiResourceBase
     $path = explode('\\', get_class($this));
     $myClass = array_pop($path);
 
-    $className = Files::classNameByNameSpace([
+    $className = $this->oApi->classNameByNameSpace([
       $this->oApi->getVersion(),
       $this->oApi->getGroup(),
       strtolower($myClass),
       $subClass
     ]);
-    $classPath = Files::getClassPathByClassName($this->oApi->getConfig()->getRootPath(), $className);
+//    $classPath = Files::getClassPathByClassName($this->oApi->getConfig()->getRootPath(), $className);
+    $className = $this->oApi->getConfig()->getNameSpace().$className;
 
-    if (!file_exists($classPath)) {
+    if (!class_exists($className)) {
       $errorMessage = "Sub resource [{$subClass}] is not found. ";
       $errorCode = 400.0001;
       throw new ApiException($errorMessage, $errorCode);
     }
 
-    $className = $this->oApi->getConfig()->getNameSpace().$className;
     $oClass = new $className($this);
 
     return $oClass;

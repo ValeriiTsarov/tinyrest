@@ -2,10 +2,6 @@
 
 namespace TinyRest\rest;
 
-use TinyRest\helpers\Files;
-use TinyRest\helpers\Errors;
-use TinyRest\rest\ApiException;
-
 /**
  * Class Api is a major router
  * @package TinyRest\request
@@ -22,8 +18,6 @@ class Api {
 
   ;
 
-  protected $oErrors;
-  protected $oUri;
   protected $oValidator;
   protected $oResource;
   protected $oConfig;
@@ -40,7 +34,6 @@ class Api {
   public function __construct(ApiConfig $oConfig)
   {
     $this->requestMethod = $_SERVER['REQUEST_METHOD'];
-    $this->oErrors = new Errors();
     $pathArr = explode('?', $_SERVER['REQUEST_URI']);
     $this->pathSegments = $this->getPathSegments($pathArr[0]);
     if (empty($pathArr[1])) {
@@ -168,10 +161,10 @@ class Api {
       $errorCode = 400;
     } else {
       $this->version = $this->pathSegments[self::TRACKING_API_VERSION_SEGMENT];
-      if (!$this->isDir([$this->version])) {
-        $errorMessage = "[{$this->version}] is not supported. ";
-        $errorCode = 400.0221;
-      }
+//      if (!$this->isDir([$this->version])) {
+//        $errorMessage = "[{$this->version}] is not supported. ";
+//        $errorCode = 400.0221;
+//      }
     }
 
     if ( $errorCode ) {
@@ -191,10 +184,10 @@ class Api {
     } else {
       $this->classGroup = $this->pathSegments[self::TRACKING_API_GROUP_SEGMENT];
 
-      if (!$this->isDir([$this->version, $this->classGroup])) {
-        $errorMessage = "[{$this->classGroup}] is not supported. ";
-        $errorCode = 400.0221;
-      }
+//      if (!$this->isDir([$this->version, $this->classGroup])) {
+//        $errorMessage = "[{$this->classGroup}] is not supported. ";
+//        $errorCode = 400.0221;
+//      }
     }
 
     if ( $errorCode ) {
@@ -214,10 +207,9 @@ class Api {
       $errorCode = 400;
     } else {
       $this->resource = strtolower($this->pathSegments[self::TRACKING_API_RESOURCE_SEGMENT]);
-      $className = Files::classNameByNameSpace([$this->version, $this->classGroup, ucfirst($this->resource)]);
-      $classPath = Files::getClassPathByClassName($this->apiRoot, $className);
-
-      if (!file_exists($classPath)) {
+      $className = $this->classNameByNameSpace([$this->version, $this->classGroup, ucfirst($this->resource)]);
+      $className = $this->oConfig->getNameSpace().$className;
+      if (!class_exists($className)) {
         $errorMessage = "[{$this->resource}] is not supported. ";
         $errorCode = 400.0001;
       }
@@ -232,7 +224,7 @@ class Api {
       throw new ApiException($errorMessage, $errorCode);
     }
 
-    $className = $this->oConfig->getNameSpace().$className;
+
     $this->oResource = new $className($this);
     
   }
@@ -352,6 +344,27 @@ class Api {
   public function getRequestMethod()
   {
     return $this->requestMethod;
+  }
+
+  /**
+   * The last element of the namespace is a class file.
+   * Example: ['v1', 'game', 'rules', ]
+   * @param array $nameSpace
+   * @return string
+   */
+  public function classNameByNameSpace(array $nameSpace)
+  {
+    $classNameArr = [];
+    $theLast = count($nameSpace)-1;
+    foreach ($nameSpace as $key => $value) {
+      $value = strtolower($value);
+      if ($key == $theLast) {
+        $value = ucfirst($value);
+      }
+      $classNameArr[] = $value;
+    }
+
+    return implode('\\', $classNameArr);
   }
 
 }
