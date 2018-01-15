@@ -1,6 +1,6 @@
 <?php
 
-namespace TinyRest\request;
+namespace App\request;
 
 /**
  * Class Response is a helper which works with http response

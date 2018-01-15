@@ -1,6 +1,6 @@
 <?php
 
-namespace TinyRest\rest;
+namespace TinyRest;
 
 /**
  * Class Api is a major router
@@ -22,105 +22,28 @@ class Api {
   protected $oResource;
   protected $oConfig;
 
-  protected $apiRoot;
   protected $pathSegments;
-  protected $queryParams;
   protected $version;
   protected $classGroup;
   protected $resource;
   protected $method;
-  protected $requestMethod;
 
   public function __construct(ApiConfig $oConfig)
   {
-    $this->requestMethod = $_SERVER['REQUEST_METHOD'];
-    $pathArr = explode('?', $_SERVER['REQUEST_URI']);
-    $this->pathSegments = $this->getPathSegments($pathArr[0]);
-    if (empty($pathArr[1])) {
-      $pathArr[1] = '';
-    }
-    $this->queryParams = array_merge(
-      $this->getQueryParams($pathArr[1])
-      , $this->parseRawHttpRequest(@file_get_contents("php://input"))
-    );
     $this->oConfig = $oConfig;
-    $this->apiRoot = $this->oConfig->getRootPath();
+    $this->pathSegments = $this->oConfig->getPathSegments();
     $this->oValidator = new ApiValidator();
-  }
-
-  protected function getQueryParams($input)
-  {
-    $data = [];
-    if ($input && ($tmpArr = explode("&", $input))) {
-      foreach ($tmpArr as $pair) {
-        $tmp = explode("=", $pair);
-        $data[urldecode($tmp[0])] = urldecode($tmp[1]);
-      }
-    }
-
-    return $data;
-  }
-
-  protected function getPathSegments($input)
-  {
-    $data = array_values(array_map(
-      'rawurldecode',
-      array_filter(explode('/', $input), 'strlen')
-    ));
-
-    return $data;
-  }
-
-  protected function parseRawHttpRequest($input)
-  {
-    $data = [];
-    if (!$input) {
-      return $data;
-    }
-
-    //form-data
-    if (strpos($input, 'Content-Disposition: form-data')) {
-      $arr = explode('----', $input);
-      foreach ($arr as $row) {
-        if (!strpos($row, 'name=')) {
-          continue;
-        }
-        $row = str_replace(["\r", "\""], ["\n", ""], $row);
-        $tmpArr = array_values(array_filter(explode("\n", explode('name=', $row)[1])));
-        $data[$tmpArr[0]] = $tmpArr[1];
-      }
-      //x-www-form-urlencoded
-    } else {
-      parse_str($input, $data);
-    }
-    //DELETE method
-    if (empty($data) && ($tmpArr = $this->getQueryParams($input))) {
-      foreach ($tmpArr as $pair) {
-        $tmp = explode("=", $pair);
-        $data[urldecode($tmp[0])] = urldecode($tmp[1]);
-      }
-    }
-
-    return $data;
-  }
-
-  protected function isDebugMode()
-  {
-    $result = 0;
-
-    return $result;
   }
 
   /**
    * @param array $dirs
-   * @param string $separator DIRECTORY_SEPARATOR
    * @return bool
    */
-  protected function isDir(array $dirs = [], $separator = DIRECTORY_SEPARATOR)
+  protected function isDir(array $dirs = [])
   {
-    $dirs = array_merge([$this->apiRoot], $dirs);
+    $dirs = array_merge([$this->oConfig->getRootPath()], $dirs);
     $result = true;
-    if (!is_dir(implode($separator, $dirs))) {
+    if (!is_dir(implode(DIRECTORY_SEPARATOR, $dirs))) {
       $result = false;
     }
 
@@ -129,12 +52,12 @@ class Api {
 
   /**
    * @param array $dirs
-   * @param string $separator DIRECTORY_SEPARATOR
+   * @param bool $isFolder
    *
    * @return array
    */
-  protected function getDirList(array $dirs = [], $isFolder = true, $separator = DIRECTORY_SEPARATOR) {
-    $dir = implode($separator, array_merge([$this->apiRoot], $dirs));
+  protected function getDirList(array $dirs = [], $isFolder = true) {
+    $dir = implode(DIRECTORY_SEPARATOR, array_merge([$this->oConfig->getRootPath()], $dirs));
     $cdir = array_diff(scandir($dir), ['..', '.']);
     $list = [];
     foreach ($cdir as $value)
@@ -161,10 +84,10 @@ class Api {
       $errorCode = 400;
     } else {
       $this->version = $this->pathSegments[self::TRACKING_API_VERSION_SEGMENT];
-//      if (!$this->isDir([$this->version])) {
-//        $errorMessage = "[{$this->version}] is not supported. ";
-//        $errorCode = 400.0221;
-//      }
+      if (!$this->isDir([$this->version])) {
+        $errorMessage = "[{$this->version}] is not supported. ";
+        $errorCode = 400.0221;
+      }
     }
 
     if ( $errorCode ) {
@@ -184,10 +107,10 @@ class Api {
     } else {
       $this->classGroup = $this->pathSegments[self::TRACKING_API_GROUP_SEGMENT];
 
-//      if (!$this->isDir([$this->version, $this->classGroup])) {
-//        $errorMessage = "[{$this->classGroup}] is not supported. ";
-//        $errorCode = 400.0221;
-//      }
+      if (!$this->isDir([$this->version, $this->classGroup])) {
+        $errorMessage = "[{$this->classGroup}] is not supported. ";
+        $errorCode = 400.0221;
+      }
     }
 
     if ( $errorCode ) {
@@ -223,7 +146,6 @@ class Api {
       $errorMessage .= "Available resources: ".implode(", ", $elements);
       throw new ApiException($errorMessage, $errorCode);
     }
-
 
     $this->oResource = new $className($this);
     
@@ -274,7 +196,7 @@ class Api {
    * Get resource object if it's possible
    *
    * @return mixed
-   * @throws \TinyRest\rest\ApiException
+   * @throws \TinyRest\ApiException
    */
   public function getResourceObject()
   {
@@ -294,20 +216,21 @@ class Api {
    * @param int $isSet
    * @param int $notEmpty
    * @return mixed
-   * @throws \TinyRest\rest\ApiException
+   * @throws \TinyRest\ApiException
    */
   public function getParam($name, $type = '', $isSet = 0, $notEmpty = 0)
   {
     $error = false;
     $result = null;
+    $qp = $this->oConfig->getQueryParams();
 
-    if (isset($this->queryParams[$name])) {
-      if (empty($this->queryParams[$name])) {
+    if (isset($qp[$name])) {
+      if (empty($qp[$name])) {
         if ($notEmpty) {
           $error = true;
         }
       } else {
-        $result = $this->oValidator->check($this->queryParams[$name], $type);
+        $result = $this->oValidator->check($qp[$name], $type);
       }
     } else if ($isSet) {
       $error = true;
@@ -335,15 +258,6 @@ class Api {
   public function getValidator()
   {
     return $this->oValidator;
-  }
-
-  /**
-   * Return a type of the request method: GET|POST|PUT etc.
-   * @return string
-   */
-  public function getRequestMethod()
-  {
-    return $this->requestMethod;
   }
 
   /**

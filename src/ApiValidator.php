@@ -1,6 +1,6 @@
 <?php
 
-namespace TinyRest\rest;
+namespace TinyRest;
 
 class ApiValidator
 {

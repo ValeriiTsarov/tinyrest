@@ -1,17 +1,16 @@
 <?php
 
-namespace TinyRest\request;
+namespace TinyRest;
 
-class HttpException extends \Exception
+class ApiException extends \Exception
 {
   public function __construct($message = "", $code = 0, Throwable $previous = null) {
     if (!$message) {
-      $message = "Not implemented.";
+      $message = "This root have no elements.";
     }
     if (!$code) {
-      $code = 501;
+      $code = 200;
     }
-    parent::__construct($message, $code, $previous);
     $this->message = $message;
     $this->code = $code;
   }

@@ -3,7 +3,7 @@
 namespace App\resources\v1\testgroup;
 
 
-use TinyRest\rest\ApiResourceBase;
+use TinyRest\ApiResourceBase;
 
 class Testresource extends ApiResourceBase
 {

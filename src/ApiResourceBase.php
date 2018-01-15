@@ -1,14 +1,10 @@
 <?php
 
-namespace TinyRest\rest;
-
-use TinyRest\rest\Api;
-use TinyRest\rest\ApiException;
-use TinyRest\helpers\Files;
+namespace TinyRest;
 
 /**
- * Class ResourceBase
- * @package TinyRest\rest\v1
+ * Class ResourceBase. User must extend this class for its resources.
+ * @package TinyRest\v1
  */
 abstract class ApiResourceBase
 {
@@ -19,11 +15,11 @@ abstract class ApiResourceBase
   protected $params = [];
   /* Params example
       [
-        'driverId' => [ //Get data from URI
+        'UserId' => [ //Get data from URI
           'type' => Api::PARAM_TYPE_INT,
           'require' => 1,
         ]
-        'accessLevels' => [ //Get data from $_SESSION['AccessLevels']
+        'AccessLevels' => [ //Get data from $_SESSION['AccessLevels']
           'type' => Api::PARAM_TYPE_ARRAY,
           'require' => 1,
           'session' => 'AccessLevels',
@@ -125,7 +121,6 @@ abstract class ApiResourceBase
       strtolower($myClass),
       $subClass
     ]);
-//    $classPath = Files::getClassPathByClassName($this->oApi->getConfig()->getRootPath(), $className);
     $className = $this->oApi->getConfig()->getNameSpace().$className;
 
     if (!class_exists($className)) {
